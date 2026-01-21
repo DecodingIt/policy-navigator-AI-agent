@@ -31,16 +31,16 @@ Here is a brief explanation of every major snippet in `main.py`:
 ```python
 import os
 os.environ["AIXPLAIN_API_KEY"] = "YOUR_AIXPLAIN_API_KEY"
+```
 Explanation: This sets up the environment. We import the necessary libraries and securely set the API key. This key is the "passport" that allows our code to talk to the aiXplain servers.
 
 2. Ingestion Phase (Data Loading)
-Python
+```Python
 
 rag_index = IndexFactory.create(name=index_name, ...)
 rag_index.upsert(csv_file_path)
-Explanation:
-
-IndexFactory.create: Builds a "Vector Index" (a smart database for AI) where we will store our documents.
+```
+Explanation: IndexFactory.create: Builds a "Vector Index" (a smart database for AI) where we will store our documents.
 
 upsert: Takes our CSV data and website text and uploads it into that index, making it searchable.
 
@@ -49,54 +49,61 @@ The agent needs "tools" to do its job. We define them here:
 
 RAG Tool:
 
-Python
+```Python
 
 rag_tool = AgentFactory.create_model_tool(model=rag_index.id, ...)
+```
 What it does: Gives the agent a search engine. It links the agent to the data we just uploaded so it can find answers in the regulations.
 
 SQL Tool:
 
-Python
+```Python
 
 sql_tool = AgentFactory.create_sql_tool(..., source=csv_file_path)
+```
 What it does: Allows the agent to run strict data queries (like "How many policies are in category X?") on the CSV file.
 
 Code Interpreter:
 
-Python
+```Python
 
 code_tool = PythonInterpreterTool()
+```
 What it does: A calculator on steroids. If the agent needs to compute a percentage or solve a math problem found in the policy, it writes Python code here to get the exact answer.
 
 Notification Tool:
 
-Python
+```Python
 
 notification_tool = ModelFactory.create_utility_model(..., code=send_notification)
+```
 What it does: This is a custom function we wrote. It simulates connecting to an external app (like Slack) to send alerts based on the agent's findings.
 
 4. Agent Creation
-Python
+```Python
 
 agent = AgentFactory.create(
     name="Policy Navigator Agent",
     tools=[rag_tool, sql_tool, code_tool, notification_tool],
     llm_id="..."
 )
+```
 Explanation: This is where we build the "Brain." We combine the Logic Model (LLM) with all the tools we created above. This tells the AI: "You are the Policy Navigator, and here are the tools you can use to answer questions."
 
 5. Execution
-Python
+```Python
 
 response = agent.run(query)
+```
 Explanation: We give the agent a complex command. It autonomously figures out which tools to use and in what order to solve the user's problem.
 
 🛠️ How to Run
 Install Dependencies:
-
+```
 Bash
 
 pip install aixplain requests beautifulsoup4 pandas
+```
 Add Your Key: Open main.py and paste your API key in the os.environ section.
 
 Run:
