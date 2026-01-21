@@ -30,7 +30,7 @@ csv_file_path = "compliance_data.csv"
 df = pd.DataFrame({
     'policy_id': [101, 102],
     'text': [
-        "The standard for PM2.5 emissions has been lowered to 9.0 µg/m3 annually.",
+        "The standard for PM2.5 emissions has been lowered to 9.0 annually.",
         "Healthcare providers must report Level 3 incidents within 24 hours."
     ],
     'category': ["Environment", "Health"]
@@ -51,7 +51,7 @@ def scrape_and_index_url(url, source_tag):
 
         record = Record(
             id=url,
-            value=text_content[:5000],  # Limit text size for demo
+            value=text_content[:5000],  
             attributes={"source": source_tag, "url": url}
         )
         rag_index.upsert([record])
@@ -103,7 +103,7 @@ agent = AgentFactory.create(
         code_tool,
         notification_tool
     ],
-    llm_id="6646261c6eb563165658bbb1"  # Example ID for GPT-4o or similar high-reasoning model
+    llm_id="6646261c6eb563165658bbb1"  
 )
 
 print(f"Agent Created! ID: {agent.id}")
@@ -120,4 +120,5 @@ print(f"\nProcessing Query: {query}")
 response = agent.run(query)
 
 print("\n--- Agent Response ---")
+
 print(response.data["output"])
