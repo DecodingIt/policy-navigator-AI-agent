@@ -1,124 +1,99 @@
+#=================================================================================
+#First Block
+!pip install aixplain pandas streamlit --upgrade -q
+
 import os
-import requests
-import pandas as pd
-from bs4 import BeautifulSoup
+os.environ["AIXPLAIN_API_KEY"] = "f42fae9e414932e1991b589cf28c95317e240a0bd7d52d4aa0c87ab400231c88"
+import time
+from aixplain.factories import AgentFactory, ModelFactory, IndexFactory, ToolFactory
+from aixplain.enums import Function, Language
 
-from aixplain.factories import AgentFactory, IndexFactory, ModelFactory, ToolFactory
-from aixplain.modules.model.record import Record
-from aixplain.enums import Function, Supplier
-from aixplain.modules.agent.tool.python_interpreter_tool import PythonInterpreterTool
+print("Environment setup complete")
+#=================================================================================
+#2ND BLOCK
+import time
+from aixplain.enums import Function
 
-# 1. SETUP & AUTHENTICATION
 
-os.environ["AIXPLAIN_API_KEY"] = "YOUR_AIXPLAIN_API_KEY"
+print("Searching for a valid embedding model")
+embedding_models = ModelFactory.list(
+    function=Function.TEXT_EMBEDDING,
+    page_size=5
+)
+embed_model = embedding_models['results'][0]
+print(f"Using Model: {embed_model.name}")
 
-print("--- Setting up Policy Navigator Agent ---")
 
-# 2. INGESTION PHASE (Core Functionality: Ingest Data)
+unique_id = int(time.time())
+index_name = f"Gov_Compliance_Index_{unique_id}"
+print(f"Creating Unique Index: {index_name}...")
 
-index_name = "Government_Regulations_Index"
 
-print(f"Creating/Retrieving Index: {index_name}...")
-
-rag_index = IndexFactory.create(
+index = IndexFactory.create(
     name=index_name,
-    description="Index containing government regulations (EPA, WHO) and compliance datasets."
-)
-
-csv_file_path = "compliance_data.csv"
-
-df = pd.DataFrame({
-    'policy_id': [101, 102],
-    'text': [
-        "The standard for PM2.5 emissions has been lowered to 9.0 annually.",
-        "Healthcare providers must report Level 3 incidents within 24 hours."
-    ],
-    'category': ["Environment", "Health"]
-})
-df.to_csv(csv_file_path, index=False)
-
-print("Ingesting Dataset (CSV)...")
-
-rag_index.upsert(csv_file_path)
-
-def scrape_and_index_url(url, source_tag):
-    print(f"Scraping {url}...")
-    try:
-        response = requests.get(url)
-        soup = BeautifulSoup(response.content, 'html.parser')
-
-        text_content = " ".join([p.get_text() for p in soup.find_all('p')])
-
-        record = Record(
-            id=url,
-            value=text_content[:5000],  
-            attributes={"source": source_tag, "url": url}
-        )
-        rag_index.upsert([record])
-        print(f"Successfully indexed content from {source_tag}")
-    except Exception as e:
-        print(f"Failed to scrape {url}: {e}")
-
-# 3. DEFINE TOOLS (Technical Components)
-
-rag_tool = AgentFactory.create_model_tool(
-    model=rag_index.id,
-    description="Use this tool to search for specific government regulations, compliance policies, and scraped web data."
+    description="Index containing government privacy acts.",
+    embedding_model=embed_model.id
 )
 
 
-sql_tool = AgentFactory.create_sql_tool(
-    name="Compliance Data Analyzer",
-    description="Useful for counting policies, filtering data by category, or finding specific policy IDs from the CSV.",
-    source=csv_file_path,
-    source_type="csv"
-)
+policy_text = """
+EXECUTIVE ORDER 14067 SUMMARY:
+This order ensures the responsible development of digital assets.
+Section 4(b): The Secretary of the Treasury shall report on the future of money and payment systems.
+Compliance Note: Small businesses dealing in crypto-assets must register with FinCEN by Q4 2025.
+Section 230 Status: Remains active but subject to new transparency reporting requirements as of May 2025.
+"""
 
+with open("policy_document.txt", "w") as f:
+    f.write(policy_text)
 
+print("Uploading document")
+index.upsert("policy_document.txt")
 
-code_tool = PythonInterpreterTool()
+print(f"Indexing complete. Index ID: {index.id}")
+#=================================================================================
+#3RD BLOCK
 
-def send_notification(message: str, platform: str = "Slack") -> str:
+rag_tool = index
 
-    print(f"\n[INTEGRATION] Sending to {platform}: {message}\n")
-    return f"Notification successfully sent to {platform}."
+search_tool = ModelFactory.get("6931bdf462eb386b7158def3")
 
+calc_tool = ModelFactory.get("60ddefa08d38c51c5885e75e")
 
-notification_tool = ModelFactory.create_utility_model(
-    name="Notification Sender",
-    description="Send summaries, alerts, or updates to external apps like Slack or Notion.",
-    code=send_notification
-)
+print("Tools configured.")
 
-# 4. CREATE THE AGENT
+system_prompt = """
+You are a 'Government Compliance & Regulatory Agent'.
+1. ALWAYS check the 'Gov_Compliance_Index' first for specific policy details.
+2. If the user asks about the STATUS of a law and it's not in the index, use the Search Tool.
+3. Provide clear, structured answers with citations.
+"""
 
-print("Constructing Policy Navigator Agent...")
 
 agent = AgentFactory.create(
-    name="Policy Navigator Agent",
-    description="An AI agent that analyzes government regulations and compliance policies. It can search documentation, analyze data, and notify users.",
+    name="GoverAgent",
+    description="Agent for querying government regulations.",
+    instructions=system_prompt,
     tools=[
         rag_tool,
-        sql_tool,
-        code_tool,
-        notification_tool
+        search_tool,
+        calc_tool
     ],
-    llm_id="6646261c6eb563165658bbb1"  
+    llm_id="6922e85e0d7b9d771e28cc5b" #Gemini 3.0
 )
 
 print(f"Agent Created! ID: {agent.id}")
+#=================================================================================
+#4TH BLOCK
 
+query = "What are the compliance requirements for small businesses regarding crypto?"
 
-# 5. RUN THE AGENT
-query = """
-Check the regulations regarding PM2.5 emissions. 
-If the limit is below 10.0, use Python to calculate the percentage reduction needed from a current level of 12.0. 
-Finally, send a Slack notification with the required reduction.
-"""
+print(f"User: {query}")
+print("Agent is thinking")
 
-print(f"\nProcessing Query: {query}")
-response = agent.run(query)
-
-print("\n--- Agent Response ---")
-
-print(response.data["output"])
+try:
+    response = agent.run(query)
+    print(f"\nAgent: {response['data']['output']}")
+except Exception as e:
+    print(f"Error: {e}")
+#=================================================================================
