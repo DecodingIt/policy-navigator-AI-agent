@@ -32,9 +32,4 @@ The system uses an **Agentic Workflow** where a central "Brain" (LLM) orchestrat
 * Python 3.8+
 * An [aiXplain API Key](https://platform.aixplain.com/)
 
-## 📦 Installation
 
-**1. Clone the repository**
-```bash
-git clone [https://github.com/yourusername/gov-regs-agent.git](https://github.com/yourusername/gov-regs-agent.git)
-cd gov-regs-agent
